@@ -299,6 +299,9 @@ black memvid/
 
 ## 📚 Examples
 
+### 🚀 Interactive Colab Tutorial
+Get started quickly with Memvid by running our [Introductory Colab Notebook](examples/Memvid_Introductory_Tutorial.ipynb)! This tutorial walks you through the basic functionalities in an interactive environment.
+
 Check out the [examples/](examples/) directory for:
 - Building memory from Wikipedia dumps
 - Creating a personal knowledge base

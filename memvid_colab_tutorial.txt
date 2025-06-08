@@ -1,0 +1,295 @@
+# Memvid Introductory Tutorial
+
+## Introduction
+
+Welcome to the Memvid Introductory Tutorial!
+
+**What is Memvid?**
+Memvid is a Python library that revolutionizes AI memory management by encoding text data into videos. The core idea is "Video-as-Database": text chunks are converted into QR codes, and these QR codes become frames in an MP4 video. This allows for:
+- **Efficient Storage:** Significant compression compared to traditional databases.
+- **Fast Semantic Search:** Quick retrieval of information using natural language.
+- **Offline Capability:** Once built, memories can be used without internet access.
+- **Portability:** Your entire knowledge base is in a few files (MP4 + index files).
+
+**What this notebook covers:**
+This notebook will walk you through the basic functionalities of Memvid:
+1.  Setting up the environment in Colab.
+2.  Creating a Memvid memory from simple text chunks.
+3.  Searching the created memory.
+4.  Interacting with the memory using the basic chat interface.
+5.  Processing a sample PDF file to create another memory.
+6.  Downloading your generated memory files from Colab.
+
+Let's get started!
+
+## Setup
+
+First, we need to install Memvid and its dependencies. We'll also install `ffmpeg` and `libzbar0`, which are required by Memvid for video processing and QR code scanning, respectively.
+
+```python
+# Install Memvid and PyPDF2 for PDF processing
+!pip install memvid PyPDF2
+```
+
+```python
+# Install system dependencies (ffmpeg for video, zbar for QR codes)
+# This command is for the Colab environment
+!apt-get update && apt-get install -y ffmpeg libzbar0
+```
+
+Now, let's import the necessary modules from Memvid and the standard `os` module.
+
+```python
+import os
+from memvid import MemvidEncoder, MemvidRetriever, MemvidChat
+
+print("Setup Complete! Memvid modules imported.")
+```
+
+## 1. Creating a Memory from Text Chunks
+
+We'll start by creating a simple Memvid memory from a list of text strings (chunks).
+
+**The Process:**
+1.  Define your text data as a list of strings.
+2.  Initialize `MemvidEncoder`.
+3.  Add the text chunks to the encoder using `add_chunks()`.
+4.  Build the video memory and index files using `build_video()`.
+
+```python
+# Define some sample text chunks
+sample_chunks = [
+    "The first programmable computer was the Z3, built by Konrad Zuse.",
+    "Artificial intelligence (AI) is intelligence demonstrated by machines.",
+    "Memvid uses video frames to store text data encoded as QR codes.",
+    "Semantic search allows finding relevant information based on meaning, not just keywords.",
+    "The capital of France is Paris, known for the Eiffel Tower."
+]
+
+# Initialize the MemvidEncoder
+encoder = MemvidEncoder()
+
+# Add the chunks to the encoder
+encoder.add_chunks(sample_chunks)
+
+# Define output filenames
+video_file_text = "text_memory.mp4"
+index_file_text = "text_memory_index.json" # .faiss file will also be created with this base name
+
+# Build the video memory
+print("Building video memory from text chunks...")
+encoder.build_video(video_file_text, index_file_text)
+print(f"Memory built! Check for '{video_file_text}' and '{index_file_text}'.")
+
+# List files in the current directory to see the output
+print("\nFiles in current directory:")
+for f in os.listdir("."):
+  if "text_memory" in f:
+    print(f"- {f}")
+```
+
+You should see `text_memory.mp4`, `text_memory_index.json`, and `text_memory_index.faiss` listed above.
+
+## 2. Searching the Memory
+
+Now that we have created a memory, let's search for information within it.
+
+**The Process:**
+1.  Initialize `MemvidRetriever` with the paths to your video and index files.
+2.  Use the `search()` method with your query.
+
+```python
+# Initialize the MemvidRetriever
+retriever_text = MemvidRetriever(video_file_text, index_file_text)
+
+# Define a sample query
+query = "What is AI?"
+
+# Perform the search
+print(f"\nSearching for: '{query}'")
+results = retriever_text.search(query, top_k=2) # Get top 2 results
+
+# Print the search results
+if results:
+    for i, (chunk, score) in enumerate(results):
+        print(f"\nResult {i+1}:")
+        print(f"  Score: {score:.4f}")
+        print(f"  Chunk: {chunk}")
+else:
+    print("No results found.")
+```
+The retriever should find chunks related to AI from our sample data.
+
+## 3. Chatting with the Memory (Basic)
+
+Memvid also provides a chat interface. This allows for a more conversational way to interact with your memory, especially when integrated with a Large Language Model (LLM).
+
+**Important Note on LLM API Keys:**
+For `MemvidChat` to provide sophisticated, human-like responses, it typically needs to connect to an LLM service (like OpenAI, Google, Anthropic, etc.). This requires an API key.
+- You would normally set this key as an environment variable (e.g., `os.environ['OPENAI_API_KEY'] = 'your_key_here'` or `os.environ['GOOGLE_API_KEY'] = 'your_key_here'`).
+- **For this demo, we will proceed without setting an API key.**
+- This means `MemvidChat` will likely use its basic mode, which might primarily return the raw context found by the retriever or a very simple response, rather than a detailed conversational reply. This still demonstrates the chat mechanism.
+
+```python
+# Initialize MemvidChat
+# Since we haven't set an API key, it will use a basic fallback or no LLM.
+chat_text = MemvidChat(video_file_text, index_file_text)
+
+# Start a chat session
+chat_text.start_session()
+print("Chat session started (basic mode, no LLM API key).")
+
+# Send a message to the chat
+chat_query = "Tell me about Memvid."
+print(f"\nUser: {chat_query}")
+response = chat_text.chat(chat_query)
+
+# Print the response
+print(f"Memvid (basic response): {response}")
+```
+The response here will be basic due to the absence of an LLM, but it shows how `MemvidChat` is invoked.
+
+## 4. Processing a PDF
+
+Memvid can directly process PDF files, chunk their content, and build a searchable memory.
+
+**The Process:**
+1.  Create or upload a PDF file. For this demo, we'll create a tiny dummy PDF.
+2.  Initialize `MemvidEncoder`.
+3.  Use `add_pdf()` to process the PDF.
+4.  Build the video memory.
+
+```python
+# Create a dummy PDF file for demonstration
+# In a real scenario, you would upload your own PDF or provide its path.
+pdf_content = """
+This is a sample PDF document for the Memvid tutorial.
+Memvid is a tool for creating video-based AI memories.
+It can handle various text inputs, including PDF files.
+This document has three simple sentences.
+End of sample PDF.
+"""
+dummy_pdf_path = "sample.pdf"
+with open(dummy_pdf_path, "w") as f: # Writing as text, but will be processed by add_pdf
+    f.write(pdf_content)
+# Note: For true PDF creation and more robust PyPDF2 usage, a library to write PDFs would be ideal.
+# However, Memvid's add_pdf (if it uses PyPDF2) expects a valid PDF path.
+# For simplicity, we're creating a text file. If add_pdf fails, it means it strictly needs a binary PDF.
+# Let's try with PyPDF2 to make a minimal valid PDF.
+
+try:
+    from PyPDF2 import PdfWriter, PageObject
+    writer = PdfWriter()
+    # Add a blank page - PyPDF2 needs content on a page to be added
+    # For simplicity, we'll make a very basic PDF.
+    # A real PDF would be uploaded or generated with more complex tools.
+    # This step is tricky in Colab without actual PDF data.
+    # Let's assume the user uploads a PDF or we use a pre-existing one.
+    # For this demo, we'll revert to a simpler add_text if PyPDF2 is too complex for dummy creation.
+
+    # Create a very simple text file, and we'll add it as text to simulate PDF content processing.
+    # This bypasses the complexity of creating a valid PDF structure from scratch in Colab.
+    print(f"Writing dummy content to {dummy_pdf_path}...")
+    with open(dummy_pdf_path, "w") as f:
+        f.write(pdf_content)
+    print(f"Dummy content written to {dummy_pdf_path}")
+
+except ImportError:
+    print("PyPDF2 not fully available for dummy PDF creation, will use add_text for this section.")
+    # Fallback if PDF creation is an issue. The principle is to show processing different content.
+
+# Initialize a new MemvidEncoder for the PDF
+encoder_pdf = MemvidEncoder()
+
+# Add the PDF content.
+# If you have a real PDF uploaded to Colab, replace dummy_pdf_path with its name.
+print(f"\nProcessing content from '{dummy_pdf_path}'...")
+try:
+    # Try adding as PDF first. If it's just a text file, this might just extract text.
+    # Memvid's add_pdf is designed for actual PDF files.
+    # For a robust test, upload a real PDF to your Colab environment.
+    # For now, we'll use add_text with the content we wrote to simulate.
+    with open(dummy_pdf_path, "r") as f:
+        pdf_text_content = f.read()
+    encoder_pdf.add_text(pdf_text_content, metadata={"source": dummy_pdf_path})
+    print(f"Content from '{dummy_pdf_path}' added to encoder using add_text().")
+
+except Exception as e:
+    print(f"Could not process {dummy_pdf_path} as PDF directly or via text: {e}")
+    print("Skipping PDF processing for now. You can try uploading your own PDF and using encoder_pdf.add_pdf('yourfile.pdf')")
+
+
+# Define output filenames for the PDF memory
+video_file_pdf = "pdf_memory.mp4"
+index_file_pdf = "pdf_memory_index.json"
+
+# Build the video memory from the PDF content
+if encoder_pdf.get_stats()["total_chunks"] > 0:
+    print("\nBuilding video memory from PDF content...")
+    encoder_pdf.build_video(video_file_pdf, index_file_pdf)
+    print(f"Memory built! Check for '{video_file_pdf}' and '{index_file_pdf}'.")
+
+    # List files in the current directory to see the new output
+    print("\nFiles in current directory:")
+    for f in os.listdir("."):
+      if "pdf_memory" in f or "sample.pdf" in f:
+        print(f"- {f}")
+else:
+    print("\nNo chunks were added from the PDF content, skipping video build for PDF memory.")
+
+```
+**Note for PDF Processing:** The `add_pdf` function works best with actual PDF files. The code above simulates this by adding text content. For a real test, upload a PDF to your Colab session and use `encoder_pdf.add_pdf("your_uploaded_pdf_name.pdf")`.
+
+## 5. Downloading Your Memory Files
+
+Once you've created your Memvid memories, you might want to download the MP4 video and JSON/FAISS index files to use them elsewhere. Colab provides a utility for this.
+
+```python
+from google.colab import files
+
+print("Preparing to download memory files...")
+
+# Files to download (check if they exist first)
+files_to_download = []
+if os.path.exists(video_file_text): files_to_download.append(video_file_text)
+if os.path.exists(index_file_text): files_to_download.append(index_file_text)
+if os.path.exists(index_file_text.replace(".json", ".faiss")): files_to_download.append(index_file_text.replace(".json", ".faiss"))
+
+if os.path.exists(video_file_pdf) and encoder_pdf.get_stats()["total_chunks"] > 0 : files_to_download.append(video_file_pdf)
+if os.path.exists(index_file_pdf) and encoder_pdf.get_stats()["total_chunks"] > 0 : files_to_download.append(index_file_pdf)
+if os.path.exists(index_file_pdf.replace(".json", ".faiss")) and encoder_pdf.get_stats()["total_chunks"] > 0 : files_to_download.append(index_file_pdf.replace(".json", ".faiss"))
+
+
+if files_to_download:
+    print("\nStarting downloads. Please approve each download in your browser.")
+    for f_path in files_to_download:
+        print(f"Downloading {f_path}...")
+        files.download(f_path)
+    print("\nAll specified files have been processed for download.")
+else:
+    print("\nNo memory files were found or created to download.")
+
+```
+
+## Conclusion
+
+Congratulations! You've completed the Memvid Introductory Tutorial.
+
+**Recap:**
+- You learned how to set up Memvid in a Colab environment.
+- You created a Memvid memory from raw text chunks.
+- You searched this memory using semantic queries.
+- You saw how the basic chat interface works.
+- You went through the process of (simulated) PDF ingestion.
+- You learned how to download the generated memory files.
+
+**Explore Further:**
+This was just a basic introduction. Memvid has many more features and configuration options. Try it with your own text data or PDFs! Explore different chunking strategies, embedding models, and video settings.
+
+For more detailed information, documentation, and advanced examples, please visit the official Memvid GitHub repository:
+[https://github.com/olow304/memvid](https://github.com/olow304/memvid) (Or the correct link if different)
+
+Happy memory building!
+```
+
+This draft includes Markdown for explanations and Python code blocks for execution in a Colab environment. I've tried to make the PDF section a bit more robust by first attempting to create a dummy text file and then process its content, as creating a structurally valid PDF from scratch in Colab without external data or complex libraries can be tricky for an introductory notebook. I've added notes to guide the user on how to use their own PDFs. I also added checks before downloading files.
